@@ -10,6 +10,7 @@ import twitter4j.auth.Authorization;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Random;
 
 /**
  * Created by nikola on 26.4.16.
@@ -19,6 +20,7 @@ public class CustomTwitterReceiver extends Receiver<Status> {
     String[] filters;
     TwitterStream twitterStream;
     Integer sampleSize;
+    Random random;
 
     final Map<String, Integer> langMap;
     final Map<String, Integer> placeMap;
@@ -34,6 +36,7 @@ public class CustomTwitterReceiver extends Receiver<Status> {
         placeMap = new HashMap<>();
         langPlaceMap = new HashMap<>();
         probabilityMap = new HashMap<>();
+        random = new Random();
     }
 
     @Override
@@ -65,18 +68,18 @@ public class CustomTwitterReceiver extends Receiver<Status> {
                 int groupingLangCount = langMap.size();
                 int groupingPlaceCount = placeMap.size();
 
-                int totalMax = 0;
+                float totalMax = 0;
 
                 for (Map.Entry<Tuple2<String, String>, Integer> group: langPlaceMap.entrySet()) {
                     int gCount = group.getValue();
                     Tuple2<String, String> attributes = group.getKey();
 
-                    int sampleSizeLang = gCount;
-                    int sampleSizePlace = gCount;
+                    float sampleSizeLang = gCount;
+                    float sampleSizePlace = gCount;
 
                     for (Map.Entry<String, Integer> langGroup: langMap.entrySet()) {
                         if (langGroup.getKey().equals(attributes._1())) {
-                            sampleSizeLang = (sampleSize * gCount) / (groupingLangCount * langGroup.getValue());
+                            sampleSizeLang = (sampleSize * gCount * 1.0f) / (groupingLangCount * langGroup.getValue());
                         }
                     }
 
@@ -86,23 +89,26 @@ public class CustomTwitterReceiver extends Receiver<Status> {
                         }
                     }
 
-                    int sampleSizeMax = Math.max(sampleSizeLang, sampleSizePlace);
+                    float sampleSizeMax = Math.max(sampleSizeLang, sampleSizePlace);
                     totalMax += sampleSizeMax;
-                    group.setValue(sampleSizeMax);
+                    probabilityMap.put(group.getKey(), sampleSizeMax);
                 }
 
-                for (Map.Entry<Tuple2<String, String>, Integer> group: langPlaceMap.entrySet()) {
-                    int sampleSizeG = (sampleSize * group.getValue()) / totalMax;
-                    group.setValue(sampleSizeG);
+                for (Map.Entry<Tuple2<String, String>, Float> group: probabilityMap.entrySet()) {
+                    float sampleSizeG = (sampleSize * group.getValue()) / totalMax;
+                    float groupProbability = sampleSizeG / langPlaceMap.get(group.getKey());
+                    group.setValue(groupProbability);
                 };
 
+                float pr = probabilityMap.get(langPlace);
                 System.out.println("----------------------------------------------------------");
-                for (Map.Entry<Tuple2<String, String>, Integer> group: langPlaceMap.entrySet()) {
-                    System.out.println("(" + group.getKey()._1() + ", " + group.getKey()._2() + ") -> SampleSize: " + group.getValue());
-                }
+                System.out.println("(" + language + ", " + place + ") -> Probability: " + pr);
                 System.out.println("----------------------------------------------------------");
 
-                store(status);
+                float r = random.nextFloat();
+                if (r <= pr) {
+                    store(status);
+                };
             }
 
             @Override

@@ -23,7 +23,7 @@ public class CustomTwitterReceiver extends Receiver<Status> {
     Random random;
 
     final Map<String, Integer> langMap;
-    final Map<String, Integer> placeMap;
+    final Map<String, Integer> retweetMap;
     final Map<Tuple2<String, String>, Integer> langPlaceMap;
     final Map<Tuple2<String, String>, Float> probabilityMap;
 
@@ -33,7 +33,7 @@ public class CustomTwitterReceiver extends Receiver<Status> {
         this.sampleSize = sampleSize;
 
         langMap = new HashMap<>();
-        placeMap = new HashMap<>();
+        retweetMap = new HashMap<>();
         langPlaceMap = new HashMap<>();
         probabilityMap = new HashMap<>();
         random = new Random();
@@ -47,7 +47,7 @@ public class CustomTwitterReceiver extends Receiver<Status> {
             @Override
             public void onStatus(final Status status) {
                 String language = status.getLang();
-                String place = status.getPlace().getName();
+                String place = status.isRetweet()? "true" : "false";
                 Tuple2<String, String> langPlace = new Tuple2<String, String>(language, place);
 
                 if (langMap.containsKey(language))
@@ -55,10 +55,10 @@ public class CustomTwitterReceiver extends Receiver<Status> {
                 else
                     langMap.put(language, 1);
 
-                if (placeMap.containsKey(place))
-                    placeMap.put(place, placeMap.get(place) + 1);
+                if (retweetMap.containsKey(place))
+                    retweetMap.put(place, retweetMap.get(place) + 1);
                 else
-                    placeMap.put(place, 1);
+                    retweetMap.put(place, 1);
 
                 if (langPlaceMap.containsKey(langPlace))
                     langPlaceMap.put(langPlace, langPlaceMap.get(langPlace) + 1);
@@ -66,7 +66,7 @@ public class CustomTwitterReceiver extends Receiver<Status> {
                     langPlaceMap.put(langPlace, 1);
 
                 int groupingLangCount = langMap.size();
-                int groupingPlaceCount = placeMap.size();
+                int groupingPlaceCount = retweetMap.size();
 
                 float totalMax = 0;
 
@@ -83,7 +83,7 @@ public class CustomTwitterReceiver extends Receiver<Status> {
                         }
                     }
 
-                    for (Map.Entry<String, Integer> placeGroup: placeMap.entrySet()) {
+                    for (Map.Entry<String, Integer> placeGroup: retweetMap.entrySet()) {
                         if (placeGroup.getKey().equals(attributes._2())) {
                             sampleSizePlace = (sampleSize * gCount) / (groupingPlaceCount * placeGroup.getValue());
                         }
@@ -101,9 +101,9 @@ public class CustomTwitterReceiver extends Receiver<Status> {
                 };
 
                 float pr = probabilityMap.get(langPlace);
-                System.out.println("----------------------------------------------------------");
-                System.out.println("(" + language + ", " + place + ") -> Probability: " + pr);
-                System.out.println("----------------------------------------------------------");
+//                System.out.println("----------------------------------------------------------");
+//                System.out.println("(" + language + ", " + place + ") Tuples: " +  langPlaceMap.get(langPlace)  + " -> Probability: " + pr);
+//                System.out.println("----------------------------------------------------------");
 
                 float r = random.nextFloat();
                 if (r <= pr) {

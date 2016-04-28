@@ -28,7 +28,7 @@ public class TwitterAnalysis {
         String accessTokenSecret = "rDG45GEXPbmA7F8jfJcSNRu21CgL2286rZl2CNEVTfaoz";
         Helper.configureTwitterCredentials(consumerKey, consumerSecret, accessToken, accessTokenSecret);
 
-        JavaDStream<Status> tweets = ssc.receiverStream(new CustomTwitterReceiver(Integer.valueOf(args[2]), null,StorageLevels.MEMORY_AND_DISK_2));
+        JavaDStream<Status> tweets;// = ssc.receiverStream(new CustomTwitterReceiver(Integer.valueOf(args[2]), null,StorageLevels.MEMORY_AND_DISK_2));
         switch (args[0]) {
             case "sample":
                 tweets = ssc.receiverStream(new CustomTwitterReceiver(Integer.valueOf(args[2]), null,StorageLevels.MEMORY_AND_DISK_2));
@@ -48,6 +48,9 @@ public class TwitterAnalysis {
                 return (status.getLang().equals("es"));
             }
         }).count();
+
+        spanishCount.print();
+        totalCount.print();
 
         ssc.start();
         ssc.awaitTermination();

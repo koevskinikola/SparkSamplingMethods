@@ -79,7 +79,7 @@ public class CustomTwitterReceiver extends Receiver<Status> {
 
                     for (Map.Entry<String, Integer> langGroup: langMap.entrySet()) {
                         if (langGroup.getKey().equals(attributes._1())) {
-                            sampleSizeLang = (sampleSize * gCount * 1.0f) / (groupingLangCount * langGroup.getValue());
+                            sampleSizeLang = (sampleSize * gCount) / (groupingLangCount * langGroup.getValue());
                         }
                     }
 

@@ -5,12 +5,13 @@ import twitter4j.Status;
 import twitter4j.TwitterStream;
 import twitter4j.auth.Authorization;
 
+import java.io.Serializable;
 import java.util.*;
 
 /**
  * Created by nikola on 5.5.16.
  */
-public abstract class CongressionalSample<K, V> {
+public abstract class CongressionalSample<K, V> implements Serializable {
     Integer sampleSize;
     Integer count;
     Integer totalMax;
@@ -27,6 +28,7 @@ public abstract class CongressionalSample<K, V> {
     final Map<V, HashMap<V, Tuple2<ArrayList<Tuple2<K, List<V>>>, Integer>>> groupingReservoirs;
     final Map<List<V>, Tuple2<ArrayList<K>, Integer>> senateReservoirs;
     final Map<List<K>, Integer> congressSample;
+    final Map<List<V>, Tuple2<List<K>, Integer>> intMap;
 
     List<K> sample;
 
@@ -40,7 +42,7 @@ public abstract class CongressionalSample<K, V> {
         groupsMap = new HashMap<>();
         sampleSizeMap = new HashMap<>();
 
-        uniformReservoir = new ArrayList<>(sampleSize);
+        uniformReservoir = new ArrayList<>();
         uniformReservoirGrouped = new HashMap<>();
         groupingReservoirs = new HashMap<>();
         senateReservoirs = new HashMap<>();
@@ -51,13 +53,14 @@ public abstract class CongressionalSample<K, V> {
         }
 
         congressSample = new HashMap<>();
+        intMap = new HashMap<>();
     }
 
     public void singleSample(K item) {
-        uniformSample(item);
-        senateSample(item);
         countTuples(item);
         groupingSample(item);
+//        uniformSample(item);
+        senateSample(item);
 
         count++;
     }
@@ -74,15 +77,18 @@ public abstract class CongressionalSample<K, V> {
         } else {
             int randomPos = random.nextInt(count);
             if (randomPos < sampleSize) {
-                uniformReservoir.add(randomPos, item);
+                uniformReservoir.set(randomPos, item);
             }
         }
     }
 
     public void senateSample(K item) {
-        int senateSlotSize = sampleSize / senateReservoirs.size();
         List<V> key = getGroupList(item);
+
         if (senateReservoirs.containsKey(key)) {
+            int senateSlots = senateReservoirs.size();
+            int senateSlotSize = sampleSize / senateSlots;
+
             Tuple2<ArrayList<K>, Integer> reservoir = senateReservoirs.get(key);
             ArrayList<K> tmpList = reservoir._1();
             int slotCount = reservoir._2();
@@ -92,7 +98,7 @@ public abstract class CongressionalSample<K, V> {
             } else {
                 int randomPos = random.nextInt(count);
                 if (randomPos < senateSlotSize) {
-                    tmpList.add(randomPos, item);
+                    tmpList.set(randomPos, item);
                 }
             }
             slotCount++;
@@ -106,21 +112,23 @@ public abstract class CongressionalSample<K, V> {
 
     public void groupingSample(K item) {
         List<V> tmpList = getGroupList(item);
+
         for (V grouping:groupList) {
-            int groupingCount = groupingsMap.get(grouping).size();
-            int grouping1SlotSize = sampleSize / groupingCount;
-            V key = get(item, grouping);
+
             HashMap<V, Tuple2<ArrayList<Tuple2<K, List<V>>>, Integer>> groupingReservoir = groupingReservoirs.get(grouping);
+            int groupingCount = groupingReservoir.isEmpty()? 1 : groupingReservoir.size();
+            int groupingSlotSize = sampleSize / groupingCount;
+            V key = get(item, grouping);
 
             if (groupingReservoir.containsKey(key)) {
                 Tuple2<ArrayList<Tuple2<K, List<V>>>, Integer> tmpReservoir = groupingReservoir.get(key);
                 int groupCount = tmpReservoir._2();
-                if (groupCount < grouping1SlotSize) {
+                if (groupCount < groupingSlotSize) {
                     tmpReservoir._1().add(new Tuple2<K, List<V>>(item, tmpList));
                 } else {
                     int randomPos = random.nextInt(groupCount);
-                    if (randomPos < grouping1SlotSize) {
-                        tmpReservoir._1().add(randomPos, new Tuple2<K, List<V>>(item, tmpList));
+                    if (randomPos < groupingSlotSize) {
+                        tmpReservoir._1().set(randomPos, new Tuple2<K, List<V>>(item, tmpList));
                     }
                 }
                 groupCount++;
@@ -129,7 +137,7 @@ public abstract class CongressionalSample<K, V> {
             } else {
                 int groupCount = 0;
                 ArrayList<Tuple2<K, List<V>>> groupList = new ArrayList<>();
-                if (groupCount < grouping1SlotSize) {
+                if (groupCount < groupingSlotSize) {
                     groupList.add(new Tuple2<K, List<V>>(item, tmpList));
                 }
                 groupCount++;
@@ -165,7 +173,9 @@ public abstract class CongressionalSample<K, V> {
             groupsMap.put(tmpList, 1);
     }
 
+    //TODO FIND BUG
     public void groupUniformReservoir() {
+        List<K> uniformReservoir = this.uniformReservoir;
         for (K item:uniformReservoir) {
             List<V> key = getGroupList(item);
 
@@ -182,7 +192,10 @@ public abstract class CongressionalSample<K, V> {
     }
 
     public void calculateSampleSlotSize() {
+
+
         int totalMax = 0;
+//        System.out.println("Groups #:" + groupsMap.size());
         for (Map.Entry group:groupsMap.entrySet()) {
 
             //Get attribute values (groups)
@@ -196,7 +209,7 @@ public abstract class CongressionalSample<K, V> {
 
                 //the Group-by attribute/column
                 V groupingLabel = groupList.get(index);
-
+//                System.out.println("Label: " +  groupingLabel + ", Key: " + grouping);
                 //The number of values per attribute (mT)
                 int gCount = groupingReservoirs.get(groupingLabel).size();
 
@@ -226,11 +239,12 @@ public abstract class CongressionalSample<K, V> {
             }
 
             //Compare to uniform group
-            int uniformSize = uniformReservoirGrouped.get(groupings).size();
-            if (maxSize < uniformSize) {
-                maxSize = uniformSize;
-                maxList = uniformReservoirGrouped.get(groupings);
-            }
+//            int uniformSize = uniformReservoirGrouped.get(groupings).size();
+//            System.out.println("Uniform list size: " + uniformSize);
+//            if (maxSize < uniformSize) {
+//                maxSize = uniformSize;
+//                maxList = uniformReservoirGrouped.get(groupings);
+//            }
 
             //Compare to Senate group
             int senateSize = senateReservoirs.get(groupings)._1().size();
@@ -240,28 +254,38 @@ public abstract class CongressionalSample<K, V> {
             }
 
             totalMax += maxSize;
-            this.totalMax = totalMax;
             congressSample.put(maxList, maxSize);
+            intMap.put(groupings, new Tuple2<List<K>, Integer>(maxList, maxSize));
         }
+        this.totalMax = totalMax;
     }
 
     public void scaleDownSample() {
-        for (Map.Entry groupSample:congressSample.entrySet()) {
-            List<K> sampleList = (List<K>)groupSample.getKey();
-            int maxSize = (int)groupSample.getValue();
+        for (Map.Entry groupSample:intMap.entrySet()) {
+            Tuple2<List<K>, Integer> tupleList = (Tuple2<List<K>, Integer>)groupSample.getValue();
+            List<K> sampleList = tupleList._1();
+            int maxSize = tupleList._2();
             int slotSampleSize = (this.sampleSize * maxSize) / this.totalMax;
+//            System.out.println("List size: " + sampleList.size() + ", Max Size: " + maxSize + ", Slot Sample Size: " + slotSampleSize);
             int counter = 0;
             for (K item:sampleList) {
+                System.out.println("Counter: " + counter + ", Slot Size: " + slotSampleSize + ", List size: " + sampleList.size());
                 if (counter < slotSampleSize) {
+                    System.out.println("SAMPLE ADDED");
                     sample.add(item);
+                    counter++;
                 } else {
                     int randomPos = random.nextInt(counter);
                     if (randomPos < slotSampleSize) {
-                        sample.add(randomPos, item);
+                        System.out.println("SAMPLE REPLACED");
+                        sample.set(randomPos, item);
                     }
+                    counter++;
                 }
+
             }
         }
+        System.out.println("FINAL sample size: " + sample.size());
     }
 
     public List<V> getGroupList(K item) {
@@ -281,11 +305,14 @@ public abstract class CongressionalSample<K, V> {
     }
 
     public List<K> getSample() {
+//        groupUniformReservoir();
         calculateSampleSlotSize();
         scaleDownSample();
 
         return sample;
     }
+
+
 
     /**
      * Define general getter function for all possible groups

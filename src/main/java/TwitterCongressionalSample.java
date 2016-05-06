@@ -18,6 +18,8 @@ public class TwitterCongressionalSample extends CongressionalSample<Status, Stri
                 return item.isRetweet()? "true" : "false";
             case "language":
                 return item.getLang();
+            case "favourite":
+                return item.isFavorited()? "yes" : "no";
             default:
                 return null;
         }

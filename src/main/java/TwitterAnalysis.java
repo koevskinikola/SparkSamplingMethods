@@ -32,7 +32,9 @@ public class TwitterAnalysis {
         switch (args[0]) {
             case "sample":
                 tweets = ssc.receiverStream(new CustomTwitterReceiver(Integer.valueOf(args[2]), null,StorageLevels.MEMORY_AND_DISK_2));
-
+                break;
+            case "sample_old":
+                tweets = ssc.receiverStream(new CustomTwitterReceiver_old(Integer.valueOf(args[2]), null,StorageLevels.MEMORY_AND_DISK_2));
                 break;
             case "normal":
                 tweets = TwitterUtils.createStream(ssc);
